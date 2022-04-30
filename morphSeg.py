@@ -24,10 +24,42 @@ def transform_word(row):
                       'label' : morph_boundary})
   return char_list
 
+def output_predictions(word_index, chars, preds, morph_cats):
+
+    lines = []
+    line_index = 0
+    word_text = ""
+    segments = ""
+    for index, char in enumerate(chars):
+        if word_index[index] == line_index:
+            # on same line
+            word_text += char
+            if preds[index]:
+                # new morph
+                segments += " @@" + char
+            else:
+                segments += char
+        else:
+            # on new line
+            # save last line
+            lines.append(word_text + '\t' + segments + '\t' + morph_cats[line_index])
+            # reinitialize for next line
+            line_index += 1
+            word_text = char
+            segments = char
+    lines.append(word_text + '\t' + segments + '\t' + morph_cats[line_index])
+
+    # write to file
+    with open('eng.word.dev.preds.tsv', 'w') as f:
+        for line in lines:
+            f.write(line + '\n')
+
+    return
+
 if __name__ == "__main__":
     # load the dataset - change to just reading strings to speed it up
-    train_input = pd.read_csv("data/eng.word.train.tsv",sep="\t",quoting=3, names=['Text', 'Segments', 'Morph_Cat'])
-    test_input = pd.read_csv("data/eng.word.dev.tsv",sep="\t",quoting=3, names=['Text', 'Segments', 'Morph_Cat'])
+    train_input = pd.read_csv("data/eng.word.train.tsv",sep="\t",quoting=3, names=['Text', 'Segments', 'Morph_Cat'], dtype=str)
+    test_input = pd.read_csv("data/eng.word.dev.tsv",sep="\t",quoting=3, names=['Text', 'Segments', 'Morph_Cat'], dtype=str)
 
     print(train_input.info())
     print(train_input.head())
@@ -42,6 +74,12 @@ if __name__ == "__main__":
     for row in test_input.itertuples():
         test_list += transform_word(row)
     test = pd.DataFrame(test_list) 
+
+    #print(test.to_string())
+
+    #output_predictions(test['word_index'], test['char_text'], test['label'], test_input['Morph_Cat'])
+
+    #assert False
 
     print(train.info())
     print(train.head())
@@ -86,14 +124,11 @@ if __name__ == "__main__":
                 loss=tf.keras.losses.BinaryCrossentropy(from_logits=True), metrics=['accuracy'])
 
     # Basic TF2 keras API is nice and sklearn-like
-    model.fit(X_train, y_train, epochs=5, batch_size=32)
+    model.fit(X_train, y_train, epochs=1, batch_size=32)
 
     model.evaluate(X_test,y_test, return_dict=True)
 
     preds = model.predict(X_test)
     preds = np.where(preds>0,1,0).ravel()
-
-    print("prediction accuracy:")
-    print(accuracy_score(y_test,preds))
-    print("baseline:")
-    print(accuracy_score(y_test,np.zeros(len(y_test))))
+    
+    output_predictions(X_test['word_index'], test['char_text'], preds, test_input['Morph_Cat'])
