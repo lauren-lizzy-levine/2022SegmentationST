@@ -4,8 +4,8 @@ from tensorflow import keras
 
 latent_dim = 256 
 num_samples = 10000
-data_path = "data/eng.word.train.tsv"
-feature_path = "char_features/eng.word.train.features.txt"
+data_path = "data/fra.word.train.tsv"
+feature_path = "char_features/fra.word.train.features.txt"
 
 # Get data features
 with open(feature_path, "r", encoding="utf-8") as f:
@@ -40,44 +40,12 @@ num_decoder_tokens = len(target_characters)
 max_encoder_seq_length = max([len(txt) for txt in input_texts])
 max_decoder_seq_length = max([len(txt) for txt in target_texts])
 
-print("Number of samples:", len(input_texts))
-print("Number of unique input tokens:", num_encoder_tokens)
-print("Number of unique output tokens:", num_decoder_tokens)
-print("Max sequence length for inputs:", max_encoder_seq_length)
-print("Max sequence length for outputs:", max_decoder_seq_length)
-
 input_token_index = dict([(char, i) for i, char in enumerate(input_characters)])
 target_token_index = dict([(char, i) for i, char in enumerate(target_characters)])
 
-encoder_input_data = np.zeros(
-	(len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype="float32"
-)
-decoder_input_data = np.zeros(
-	(len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
-)
-decoder_target_data = np.zeros(
-	(len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
-)
 
-for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
-	for t, char in enumerate(input_text):
-		encoder_input_data[i, t, input_token_index[char]] = 1.0
-	encoder_input_data[i, t + 1 :, input_token_index[" "]] = 1.0
-	for t, char in enumerate(target_text):
-		# decoder_target_data is ahead of decoder_input_data by one timestep
-		decoder_input_data[i, t, target_token_index[char]] = 1.0
-		if t > 0:
-			# decoder_target_data will be ahead by one timestep
-			# and will not include the start character.
-			decoder_target_data[i, t - 1, target_token_index[char]] = 1.0
-	decoder_input_data[i, t + 1 :, target_token_index[" "]] = 1.0
-	decoder_target_data[i, t:, target_token_index[" "]] = 1.0
-
-
-
-
-# get novel input??
-data_path = "data/eng.word.dev.tsv"
+# Get novel input
+data_path = "data/fra.word.dev.tsv"
 
 # Prepare the data
 # Vectorize the data.
@@ -91,44 +59,13 @@ for line in lines: # we need all the predictions!
 	if line == "":
 		continue
 	input_text, target_text, morph_cat = line.split("\t")
-	# We use "tab" as the "start sequence" character
-	# for the targets, and "\n" as "end sequence" character.
-	#target_text = "\t" + target_text + "\n"
 	morph_cats.append(morph_cat)
 	input_texts.append(input_text)
-	#target_texts.append(target_text)
-	#for char in input_text:
-	#    if char not in input_characters:
-	#        input_characters.add(char)
-	#for char in target_text:
-	#    if char not in target_characters:
-	#        target_characters.add(char)
 
-#input_characters = sorted(list(input_characters))
-#target_characters = sorted(list(target_characters))
-#num_encoder_tokens = len(input_characters)
-#num_decoder_tokens = len(target_characters)
-#max_encoder_seq_length = max([len(txt) for txt in input_texts])
-#max_decoder_seq_length = max([len(txt) for txt in target_texts])
-
-#print("Number of samples:", len(input_texts))
-#print("Number of unique input tokens:", num_encoder_tokens)
-#print("Number of unique output tokens:", num_decoder_tokens)
-#print("Max sequence length for inputs:", max_encoder_seq_length)
-#print("Max sequence length for outputs:", max_decoder_seq_length)
-
-#input_token_index = dict([(char, i) for i, char in enumerate(input_characters)])
-#target_token_index = dict([(char, i) for i, char in enumerate(target_characters)])
 
 novel_encoder_input_data = np.zeros(
-	(len(input_texts), max_encoder_seq_length, num_encoder_tokens + 6), dtype="float32"
+	(len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype="float32" # + 6
 )
-#decoder_input_data = np.zeros(
-#    (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
-#)
-#decoder_target_data = np.zeros(
-#    (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
-#)
 
 char_index = 0
 for i, input_text in enumerate(input_texts):
@@ -138,23 +75,10 @@ for i, input_text in enumerate(input_texts):
 			char = 's'
 		if t < max_encoder_seq_length: # lame truncation guard
 			novel_encoder_input_data[i, t, input_token_index[char]] = 1.0
-			for k, digit in enumerate(char_features[char_index]):
-				novel_encoder_input_data[i, t, num_encoder_tokens + k] = float(digit)
+			#for k, digit in enumerate(char_features[char_index]):
+			#	novel_encoder_input_data[i, t, num_encoder_tokens + k] = float(digit)
 		char_index += 1
 	novel_encoder_input_data[i, t + 1 :, input_token_index[" "]] = 1.0
-	#for t, char in enumerate(target_text):
-	#    # decoder_target_data is ahead of decoder_input_data by one timestep
-	#    decoder_input_data[i, t, target_token_index[char]] = 1.0
-	#    if t > 0:
-	#        # decoder_target_data will be ahead by one timestep
-	#        # and will not include the start character.
-	#        decoder_target_data[i, t - 1, target_token_index[char]] = 1.0
-	#decoder_input_data[i, t + 1 :, target_token_index[" "]] = 1.0
-	#decoder_target_data[i, t:, target_token_index[" "]] = 1.0
-
-
-
-
 
 
 # Define sampling models
@@ -162,21 +86,23 @@ for i, input_text in enumerate(input_texts):
 model = keras.models.load_model("s2s")
 
 encoder_inputs = model.input[0]  # input_1
-encoder_outputs, f_state_h_enc, b_state_h_enc = model.layers[2].output  # gru_1 state_c_enc 
-encoder_states = [f_state_h_enc, b_state_h_enc]
+encoder_outputs, state_h_enc = model.layers[2].output  # gru_1 state_c_enc 
+#state_h = Concatenate()([f_state_h, b_state_h])
+encoder_states = [state_h_enc]
 encoder_model = keras.Model(encoder_inputs, encoder_states)
 
 decoder_inputs_t = model.input[1]  # input_2
 decoder_inputs = tf.identity(decoder_inputs_t)
 #decoder_inputs = model.input[1]  # input_2
-decoder_f_state_input_h = keras.Input(shape=(latent_dim,))
-decoder_b_state_input_h = keras.Input(shape=(latent_dim,))
-decoder_states_inputs = [decoder_f_state_input_h, decoder_b_state_input_h]
+decoder_state_input_h = keras.Input(shape=(latent_dim,))
+#decoder_b_state_input_h = keras.Input(shape=(latent_dim,))
+decoder_states_inputs = [decoder_state_input_h]
 decoder_gru = model.layers[3]
-decoder_outputs, f_state_h_dec, b_state_h_dec = decoder_gru( # state_c_dec 
+decoder_outputs, state_h_dec = decoder_gru( # state_c_dec 
 	decoder_inputs, initial_state=decoder_states_inputs
 )
-decoder_states = [f_state_h_dec, b_state_h_dec]
+#state_h_dec = Concatenate()([f_state_h_dec, b_state_h_dec])
+decoder_states = [state_h_dec]
 decoder_dense = model.layers[4]
 decoder_outputs = decoder_dense(decoder_outputs)
 #decoder_model = keras.Model(inputs=[decoder_inputs].append(decoder_states_inputs), outputs=[decoder_outputs].append(decoder_states))
@@ -204,7 +130,7 @@ def decode_sequence(input_seq):
 	stop_condition = False
 	decoded_sentence = ""
 	while not stop_condition:
-		output_tokens, f_h, b_h = decoder_model.predict([target_seq] + states_value) #c
+		output_tokens, h = decoder_model.predict([target_seq] + [states_value]) #c
 
 		# Sample a token
 		sampled_token_index = np.argmax(output_tokens[0, -1, :])
@@ -221,22 +147,19 @@ def decode_sequence(input_seq):
 		target_seq[0, 0, sampled_token_index] = 1.0
 
 		# Update states
-		states_value = [f_h, b_h] # c
+		states_value = [h] # c
 	return decoded_sentence
 
 
 output = ""
-outfile = "eng.word.dev.preds.seq2seq.tsv"
+outfile = "fra.word.dev.preds.seq2seq.tsv"
 
-for seq_index in range(5):#range(len(novel_encoder_input_data) - 1):
+for seq_index in range(500): #range(len(novel_encoder_input_data) - 1):
 	# Take one sequence (part of the training set)
 	# for trying out decoding.
 	input_seq = novel_encoder_input_data[seq_index : seq_index + 1]
 	decoded_sentence = decode_sequence(input_seq)
 	output += input_texts[seq_index] + "\t" + decoded_sentence
 	print(seq_index)
-	#print("-")
-	#print("Input sentence:", input_texts[seq_index])
-	#print("Decoded sentence:", decoded_sentence)
 with open(outfile, "w") as f:
 		f.write(output)

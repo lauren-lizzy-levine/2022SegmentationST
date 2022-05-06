@@ -22,6 +22,7 @@ def main(words, prefixes, suffixes):
 				feature_set += "1"
 			else:
 				feature_set += "0"
+			'''
 			# does a substring to the left contain a prefix (substring must start from end of string)
 			left_pre = "0"
 			# does a substring to the left contain a suffix (substring must start from end of string)
@@ -46,6 +47,7 @@ def main(words, prefixes, suffixes):
 					right_suf = "1"
 			feature_set += right_pre
 			feature_set += right_suf
+			'''
 			char_features.append(feature_set)
 
 	return char_features
@@ -68,23 +70,22 @@ def get_data(lang, data_type):
 	for line in lines:
 		if line == "":
 			continue
-		word, _, _ = line.split("\t")
+		split_line = line.split("\t")
+		word = split_line[0]
 		words.append(word)
 
 	return words
 
 def write_to_file(lang, data_type, char_features):
 	outfile = "char_features/" + lang + ".word." + data_type + ".features.txt"
-	with open(outfile, "w+") as f:
+	with open(outfile, "w") as f:
 		for feat_set in char_features:
 			f.write(feat_set + "\n")
 	return
 
 
 if __name__ == "__main__":
-	#datafile = "data/eng.word.train.tsv"
-	#outfile = "char_features/eng.word.train.features.txt"
-	prefixes, suffixes = get_affix_lists("eng")
-	words = get_data("eng", "dev")
+	prefixes, suffixes = get_affix_lists("spa")
+	words = get_data("spa", "dev")
 	char_features = main(words, prefixes, suffixes)
-	write_to_file("eng", "dev", char_features)
+	write_to_file("spa", "dev", char_features)
