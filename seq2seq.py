@@ -4,16 +4,22 @@ from tensorflow import keras
 
 # configuration
 batch_size = 64  # Batch size for training.
-epochs = 100  # Number of epochs to train for.
+epochs = 10  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
-num_samples = 100000  # Number of samples to train on.
+num_samples = 10000  # Number of samples to train on.
 # Path to the data txt file on disk.
 data_path = "data/eng.word.train.tsv"
+feature_path = "char_features/eng.word.train.features.txt"
+
+# Get data features
+with open(feature_path, "r", encoding="utf-8") as f:
+    char_features = f.read().split("\n")
 
 # Prepare the data
 # Vectorize the data.
 input_texts = []
 target_texts = []
+morph_cats = []
 input_characters = set()
 target_characters = set()
 with open(data_path, "r", encoding="utf-8") as f:
@@ -25,6 +31,7 @@ for line in lines[: min(num_samples, len(lines) - 1)]: # i guess we're training 
     target_text = "\t" + target_text + "\n"
     input_texts.append(input_text)
     target_texts.append(target_text)
+    morph_cats.append(morph_cat)
     for char in input_text:
         if char not in input_characters:
             input_characters.add(char)
@@ -49,7 +56,7 @@ input_token_index = dict([(char, i) for i, char in enumerate(input_characters)])
 target_token_index = dict([(char, i) for i, char in enumerate(target_characters)])
 
 encoder_input_data = np.zeros(
-    (len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype="float32"
+    (len(input_texts), max_encoder_seq_length, num_encoder_tokens + 6), dtype="float32"
 )
 decoder_input_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
@@ -58,9 +65,13 @@ decoder_target_data = np.zeros(
     (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
 )
 
+char_index = 0
 for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
     for t, char in enumerate(input_text):
         encoder_input_data[i, t, input_token_index[char]] = 1.0
+        for k, digit in enumerate(char_features[char_index]):
+        	encoder_input_data[i, t, num_encoder_tokens + k] = float(digit)
+        char_index += 1
     encoder_input_data[i, t + 1 :, input_token_index[" "]] = 1.0
     for t, char in enumerate(target_text):
         # decoder_target_data is ahead of decoder_input_data by one timestep
@@ -75,12 +86,12 @@ for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
 
 # Build the Model
 # Define an input sequence and process it.
-encoder_inputs = keras.Input(shape=(None, num_encoder_tokens))
-encoder = keras.layers.LSTM(latent_dim, return_state=True)
-encoder_outputs, state_h, state_c = encoder(encoder_inputs)
+encoder_inputs = keras.Input(shape=(None, num_encoder_tokens + 6))
+encoder = keras.layers.Bidirectional(keras.layers.GRU(latent_dim, return_state=True))
+encoder_outputs, f_state_h, b_state_h = encoder(encoder_inputs) #state_c
 
 # We discard `encoder_outputs` and only keep the states.
-encoder_states = [state_h, state_c]
+encoder_states = [f_state_h, b_state_h]
 
 # Set up the decoder, using `encoder_states` as initial state.
 decoder_inputs = keras.Input(shape=(None, num_decoder_tokens))
@@ -88,14 +99,17 @@ decoder_inputs = keras.Input(shape=(None, num_decoder_tokens))
 # We set up our decoder to return full output sequences,
 # and to return internal states as well. We don't use the
 # return states in the training model, but we will use them in inference.
-decoder_lstm = keras.layers.LSTM(latent_dim, return_sequences=True, return_state=True)
-decoder_outputs, _, _ = decoder_lstm(decoder_inputs, initial_state=encoder_states)
+decoder_gru = keras.layers.Bidirectional(keras.layers.GRU(latent_dim, return_sequences=True, return_state=True))
+decoder_outputs, _, _ = decoder_gru(decoder_inputs, initial_state=encoder_states) # _
 decoder_dense = keras.layers.Dense(num_decoder_tokens, activation="softmax")
 decoder_outputs = decoder_dense(decoder_outputs)
 
 # Define the model that will turn
 # `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
 model = keras.Model([encoder_inputs, decoder_inputs], decoder_outputs)
+
+# Early Stoping
+callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)
 
 # Training
 model.compile(
@@ -107,6 +121,7 @@ model.fit(
     batch_size=batch_size,
     epochs=epochs,
     validation_split=0.2,
+    callbacks=[callback]
 )
 # Save model
 model.save("s2s")
@@ -114,7 +129,7 @@ model.save("s2s")
 
 
 
-
+'''
 # Define sampling models
 # Restore the model and construct the encoder and decoder.
 model = keras.models.load_model("s2s")
@@ -191,3 +206,4 @@ for seq_index in range(20):
     print("-")
     print("Input sentence:", input_texts[seq_index])
     print("Decoded sentence:", decoded_sentence)
+    '''
