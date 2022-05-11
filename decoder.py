@@ -4,7 +4,7 @@ from tensorflow import keras
 
 latent_dim = 256 
 num_samples = 10000
-data_path = "data/fra.word.train.tsv"
+data_path = "spa.augmented.word.train.tsv"
 feature_path = "char_features/fra.word.train.features.txt"
 
 # Get data features
@@ -19,8 +19,14 @@ input_characters = set()
 target_characters = set()
 with open(data_path, "r", encoding="utf-8") as f:
 	lines = f.read().split("\n")
-for line in lines[: min(num_samples, len(lines) - 1)]: # i guess we're training on very few samples rn
-	input_text, target_text, morph_cat = line.split("\t")
+for line in lines:#[: min(num_samples, len(lines) - 1)]: # i guess we're training on very few samples rn
+	if line == "":
+		continue
+	if len(line.split("\t")) == 2:
+		input_text, target_text = line.split("\t")
+		morph_cat = "NA"
+	else:
+		input_text, target_text, morph_cat = line.split("\t")
 	# We use "tab" as the "start sequence" character
 	# for the targets, and "\n" as "end sequence" character.
 	target_text = "\t" + target_text + "\n"
@@ -45,7 +51,7 @@ target_token_index = dict([(char, i) for i, char in enumerate(target_characters)
 
 
 # Get novel input
-data_path = "data/fra.word.dev.tsv"
+data_path = "data/spa.word.dev.tsv"
 
 # Prepare the data
 # Vectorize the data.
@@ -58,7 +64,11 @@ for line in lines: # we need all the predictions!
 	#print(line)
 	if line == "":
 		continue
-	input_text, target_text, morph_cat = line.split("\t")
+	if len(line.split("\t")) == 2:
+		input_text, target_text = line.split("\t")
+		morph_cat = "NA"
+	else:
+		input_text, target_text, morph_cat = line.split("\t")
 	morph_cats.append(morph_cat)
 	input_texts.append(input_text)
 
@@ -83,7 +93,7 @@ for i, input_text in enumerate(input_texts):
 
 # Define sampling models
 # Restore the model and construct the encoder and decoder.
-model = keras.models.load_model("s2s")
+model = keras.models.load_model("aug_spanish_s2s")
 
 encoder_inputs = model.input[0]  # input_1
 encoder_outputs, state_h_enc = model.layers[2].output  # gru_1 state_c_enc 
@@ -140,6 +150,8 @@ def decode_sequence(input_seq):
 		# Exit condition: either hit max length
 		# or find stop character.
 		if sampled_char == "\n" or len(decoded_sentence) > max_decoder_seq_length:
+			if sampled_char != "\n":
+				decoded_sentence += "\n"
 			stop_condition = True
 
 		# Update the target sequence (of length 1).
@@ -152,14 +164,22 @@ def decode_sequence(input_seq):
 
 
 output = ""
-outfile = "fra.word.dev.preds.seq2seq.tsv"
+outfile = "aug_spa.word.dev.preds.seq2seq.tsv"
+open(outfile, "w").close() # clear outfile
 
-for seq_index in range(500): #range(len(novel_encoder_input_data) - 1):
+for seq_index in range(len(novel_encoder_input_data)):
 	# Take one sequence (part of the training set)
 	# for trying out decoding.
 	input_seq = novel_encoder_input_data[seq_index : seq_index + 1]
 	decoded_sentence = decode_sequence(input_seq)
 	output += input_texts[seq_index] + "\t" + decoded_sentence
-	print(seq_index)
-with open(outfile, "w") as f:
-		f.write(output)
+	if seq_index % 100 == 0:
+		print(seq_index)
+		with open(outfile, "a") as f: # saves periodically
+			f.write(output)
+		output = ""
+with open(outfile, "a") as f: # saves periodically
+	f.write(output)
+	output = "" 
+#with open(outfile, "w") as f:
+#		f.write(output)

@@ -22,6 +22,9 @@ def main(main_lang, augmenting_langs, cats, include_dev=False):
 	with open(main_feature_file, "r") as f:
 		main_feautres = f.readlines()
 
+	augmenting_train = []
+	augmenting_features = []
+
 	for file, feat_file in zip(augmenting_files, augmenting_feat_files):
 		with open(file, "r") as f:
 			lines = f.readlines()
@@ -38,20 +41,22 @@ def main(main_lang, augmenting_langs, cats, include_dev=False):
 			else:
 				morph_cat = "X"
 			if morph_cat[:-1] in cats:
-				main_train.append(line)
-				main_feautres.append(feat_line)
+				augmenting_train.append(line)
+				augmenting_features.append(feat_line)
+	augmenting_train += main_train
+	augmenting_features += main_feautres 
 	outfile = main_lang + ".augmented.word.train.tsv"
 	feat_outfile = "char_features/" + main_lang + ".augmented.word.train.features.txt"
 	with open(outfile, "w") as f:
-		for word in main_train:
+		for word in augmenting_train:
 			f.write(word)
 	with open(feat_outfile, "w") as f:
-		for feats in main_feautres:
+		for feats in augmenting_features:
 			f.write(feats)
 	return
 
 if __name__ == "__main__":
-	main_lang = "fra"
-	augmenting_langs = ["ita", "spa"]
-	cats = ["111"]
+	main_lang = "spa"
+	augmenting_langs = ["fra", "ita"]
+	cats = ["000", "001", "010" "011"]
 	main(main_lang, augmenting_langs, cats)

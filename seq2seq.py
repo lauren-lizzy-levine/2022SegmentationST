@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from keras.layers import Concatenate
+import random
 
 # configuration
 batch_size = 64  # Batch size for training.
@@ -9,12 +10,12 @@ epochs = 30  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
 num_samples = 10000  # Number of samples to train on.
 # Path to the data txt file on disk.
-data_path = "data/fra.word.train.tsv"
+data_path = "spa.augmented.word.train.tsv"
 feature_path = "char_features/fra.word.train.features.txt"
 
 # Get data features
 with open(feature_path, "r", encoding="utf-8") as f:
-    char_features = f.read().split("\n")
+	char_features = f.read().split("\n")
 
 # Prepare the data
 # Vectorize the data.
@@ -24,21 +25,27 @@ morph_cats = []
 input_characters = set()
 target_characters = set()
 with open(data_path, "r", encoding="utf-8") as f:
-    lines = f.read().split("\n")
-for line in lines[: min(num_samples, len(lines) - 1)]: # i guess we're training on very few samples rn
-    input_text, target_text, morph_cat = line.split("\t")
-    # We use "tab" as the "start sequence" character
-    # for the targets, and "\n" as "end sequence" character.
-    target_text = "\t" + target_text + "\n"
-    input_texts.append(input_text)
-    target_texts.append(target_text)
-    morph_cats.append(morph_cat)
-    for char in input_text:
-        if char not in input_characters:
-            input_characters.add(char)
-    for char in target_text:
-        if char not in target_characters:
-            target_characters.add(char)
+	lines = f.read().split("\n")
+for line in lines: #[: min(num_samples, len(lines) - 1)]: # all data for the real deal
+	if line == "":
+		continue
+	if len(line.split("\t")) == 2:
+		input_text, target_text = line.split("\t")
+		morph_cat = "NA"
+	else:
+		input_text, target_text, morph_cat = line.split("\t")
+	# We use "tab" as the "start sequence" character
+	# for the targets, and "\n" as "end sequence" character.
+	target_text = "\t" + target_text + "\n"
+	input_texts.append(input_text)
+	target_texts.append(target_text)
+	morph_cats.append(morph_cat)
+	for char in input_text:
+		if char not in input_characters:
+			input_characters.add(char)
+	for char in target_text:
+		if char not in target_characters:
+			target_characters.add(char)
 
 input_characters = sorted(list(input_characters))
 target_characters = sorted(list(target_characters))
@@ -57,32 +64,37 @@ input_token_index = dict([(char, i) for i, char in enumerate(input_characters)])
 target_token_index = dict([(char, i) for i, char in enumerate(target_characters)])
 
 encoder_input_data = np.zeros(
-    (len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype="float32" # + 6
+	(len(input_texts), max_encoder_seq_length, num_encoder_tokens), dtype="float32" # + 6
 )
 decoder_input_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
+	(len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
 )
 decoder_target_data = np.zeros(
-    (len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
+	(len(input_texts), max_decoder_seq_length, num_decoder_tokens), dtype="float32"
 )
 
 char_index = 0
-for i, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
-    for t, char in enumerate(input_text):
-        encoder_input_data[i, t, input_token_index[char]] = 1.0
-        #for k, digit in enumerate(char_features[char_index]):
-        #	encoder_input_data[i, t, num_encoder_tokens + k] = float(digit)
-        char_index += 1
-    encoder_input_data[i, t + 1 :, input_token_index[" "]] = 1.0
-    for t, char in enumerate(target_text):
-        # decoder_target_data is ahead of decoder_input_data by one timestep
-        decoder_input_data[i, t, target_token_index[char]] = 1.0
-        if t > 0:
-            # decoder_target_data will be ahead by one timestep
-            # and will not include the start character.
-            decoder_target_data[i, t - 1, target_token_index[char]] = 1.0
-    decoder_input_data[i, t + 1 :, target_token_index[" "]] = 1.0
-    decoder_target_data[i, t:, target_token_index[" "]] = 1.0
+# shuffle train order
+joint = list(zip(input_texts, target_texts))
+random.shuffle(joint)
+input_texts, target_texts = zip(*joint)
+
+for i, (input_text, target_text) in enumerate(zip(list(input_texts), list(target_texts))):
+	for t, char in enumerate(input_text):
+		encoder_input_data[i, t, input_token_index[char]] = 1.0
+		#for k, digit in enumerate(char_features[char_index]):
+		#	encoder_input_data[i, t, num_encoder_tokens + k] = float(digit)
+		char_index += 1
+	encoder_input_data[i, t + 1 :, input_token_index[" "]] = 1.0
+	for t, char in enumerate(target_text):
+		# decoder_target_data is ahead of decoder_input_data by one timestep
+		decoder_input_data[i, t, target_token_index[char]] = 1.0
+		if t > 0:
+			# decoder_target_data will be ahead by one timestep
+			# and will not include the start character.
+			decoder_target_data[i, t - 1, target_token_index[char]] = 1.0
+	decoder_input_data[i, t + 1 :, target_token_index[" "]] = 1.0
+	decoder_target_data[i, t:, target_token_index[" "]] = 1.0
 
 
 # Build the Model
@@ -111,19 +123,19 @@ decoder_outputs = decoder_dense(decoder_outputs)
 model = keras.Model([encoder_inputs, decoder_inputs], decoder_outputs)
 
 # Early Stoping
-callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=2, restore_best_weights=True)
 
 # Training
 model.compile(
-    optimizer="rmsprop", loss="categorical_crossentropy", metrics=["accuracy"]
+	optimizer="rmsprop", loss="categorical_crossentropy", metrics=["accuracy"]
 )
 model.fit(
-    [encoder_input_data, decoder_input_data],
-    decoder_target_data,
-    batch_size=batch_size,
-    epochs=epochs,
-    validation_split=0.2,
-    callbacks=[callback]
+	[encoder_input_data, decoder_input_data],
+	decoder_target_data,
+	batch_size=batch_size,
+	epochs=epochs,
+	validation_split=0.2,
+	callbacks=[callback]
 )
 # Save model
-model.save("s2s")
+model.save("aug_spanish_s2s")
