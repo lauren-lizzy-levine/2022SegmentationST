@@ -112,7 +112,7 @@ Development languages are:
 |           | train | dev  | test |
 |-----------|-------|------|------|
 | Czech     | 1000  | 500  | 500  |
-| English   | 11007 | 1783 | 1846 |
+| English   | 11007 | 1783 | 1845 |
 | Mongolian | 1000  | 500  | 600  |
 
 ### Baseline results
@@ -130,6 +130,10 @@ We will provide python evaluation scripts, reporting the following evaluation me
 - Recall - ratio of correctly predicted morphemes on all gold morphemes 
 - F-measure - the harmonic mean of the precision and recall
 - Edit distance - average Levenshtein distance between the predicted output and the gold instance.
+
+## Submission
+
+Please submit your team's results to khuyagbaatar.b@gmail.com CCing your teammates by May 13th, 2022 (AoE). Each submission should be a .tar.gz or .zip file.
 
 ## Timeline
 
