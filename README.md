@@ -1,3 +1,21 @@
+# Repository Notes
+
+This repository contains code used for a submission the the SIGMORPHON 2022 Shared Task on Morpheme Segmentation. The full readme for the shared task is listed below this notes section. All python files in the main directory of this repository are added scripts for the subtask of word-level morpheme segmentation. There is also a requirements.txt file with the packages need to run the python scripts. The configuration for the scipts is currently hard coded. Open and modify that file paths and language names as neceaasy. Below are descriptions of each of the included python files: 
+
+### feature_extraction.py
+Creates .txt file of character aligned feature vectors for a given data file. Character aligned feature vectors are printed one character based feature vector per line.
+
+### created_augmented_train.py
+Creates new data file combining the training data/dev from one language with the training/dev data of other languages for specified morphological categories.
+
+### seq2seq.py
+Trains and saves a model for a given set of training data. Requires alteration to include features.
+
+### decoder.py
+Loads a given model and uses it to make predictions on a given data file. The predictions are saved to a separate file. Requires alteration to include features.
+
+See the evaluation directory for a description on how to use the provided evaluation script on the prediction file saved from the decoder.
+
 # SIGMORPHON 2022 Shared Task on Morpheme Segmentation
 
 Morphemes (prefixes, suffixes, root words) are linguistic descriptions, defined as the smallest meaningful unit of words. Our proposed shared task is morpheme
@@ -112,7 +130,7 @@ Development languages are:
 |           | train | dev  | test |
 |-----------|-------|------|------|
 | Czech     | 1000  | 500  | 500  |
-| English   | 11007 | 1783 | 1846 |
+| English   | 11007 | 1783 | 1845 |
 | Mongolian | 1000  | 500  | 600  |
 
 ### Baseline results
@@ -130,6 +148,10 @@ We will provide python evaluation scripts, reporting the following evaluation me
 - Recall - ratio of correctly predicted morphemes on all gold morphemes 
 - F-measure - the harmonic mean of the precision and recall
 - Edit distance - average Levenshtein distance between the predicted output and the gold instance.
+
+## Submission
+
+Please submit your team's results to khuyagbaatar.b@gmail.com CCing your teammates by May 13th, 2022 (AoE). Each submission should be a .tar.gz or .zip file.
 
 ## Timeline
 
