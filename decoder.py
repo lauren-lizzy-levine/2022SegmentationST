@@ -64,7 +64,10 @@ for line in lines: # we need all the predictions!
 	#print(line)
 	if line == "":
 		continue
-	if len(line.split("\t")) == 2:
+	if len(line.split("\t")) == 1:
+		input_text = line.split("\t")[0]
+		morph_cat = "NA"
+	elif len(line.split("\t")) == 2:
 		input_text, target_text = line.split("\t")
 		morph_cat = "NA"
 	else:
