@@ -1,6 +1,6 @@
 # Repository Notes
 
-This repository contains code used for a submission the the SIGMORPHON 2022 Shared Task on Morpheme Segmentation. The full readme for the shared task is listed below this notes section. All python files in the main directory of this repository are added scripts for the subtask of word-level morpheme segmentation. There is also a requirements.txt file with the packages need to run the python scripts. The configuration for the scipts is currently hard coded. Open and modify that file paths and language names as neceaasy. Below are descriptions of each of the included python files: 
+This repository contains code used for a submission the SIGMORPHON 2022 Shared Task on Morpheme Segmentation. The full readme for the shared task is listed below this notes section. All python files in the main directory of this repository are added scripts for the subtask of word-level morpheme segmentation. There is also a requirements.txt file with the packages need to run the python scripts. The configuration for the scipts is currently hard coded. Open and modify that file paths and language names as neceaasy. Below are descriptions of each of the included python files: 
 
 ### feature_extraction.py
 Creates .txt file of character aligned feature vectors for a given data file. Character aligned feature vectors are printed one character based feature vector per line.
