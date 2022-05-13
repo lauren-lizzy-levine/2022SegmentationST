@@ -4,7 +4,7 @@ from tensorflow import keras
 
 latent_dim = 256 
 num_samples = 10000
-data_path = "spa.augmented.word.train.tsv"
+data_path = "data/fra.word.train.tsv"
 feature_path = "char_features/fra.word.train.features.txt"
 
 # Get data features
@@ -51,7 +51,7 @@ target_token_index = dict([(char, i) for i, char in enumerate(target_characters)
 
 
 # Get novel input
-data_path = "data/spa.word.dev.tsv"
+data_path = "data/fra.word.test.tsv"
 
 # Prepare the data
 # Vectorize the data.
@@ -64,7 +64,10 @@ for line in lines: # we need all the predictions!
 	#print(line)
 	if line == "":
 		continue
-	if len(line.split("\t")) == 2:
+	if len(line.split("\t")) == 1:
+		input_text = line.split("\t")[0]
+		morph_cat = "NA"
+	elif len(line.split("\t")) == 2:
 		input_text, target_text = line.split("\t")
 		morph_cat = "NA"
 	else:
@@ -93,7 +96,7 @@ for i, input_text in enumerate(input_texts):
 
 # Define sampling models
 # Restore the model and construct the encoder and decoder.
-model = keras.models.load_model("aug_spanish_s2s")
+model = keras.models.load_model("full_french_s2s")
 
 encoder_inputs = model.input[0]  # input_1
 encoder_outputs, state_h_enc = model.layers[2].output  # gru_1 state_c_enc 
@@ -164,7 +167,7 @@ def decode_sequence(input_seq):
 
 
 output = ""
-outfile = "aug_spa.word.dev.preds.seq2seq.tsv"
+outfile = "full_fra.word.test.preds.seq2seq.tsv"
 open(outfile, "w").close() # clear outfile
 
 for seq_index in range(len(novel_encoder_input_data)):
